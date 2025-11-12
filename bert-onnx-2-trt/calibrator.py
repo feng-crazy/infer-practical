@@ -41,7 +41,36 @@ class BertCalibrator(trt.IInt8LegacyCalibrator):
         self.token_type_ids_list = []
         self.position_ids_list = []
         
-        # TODO: your code, read inputs
+        # 读取输入数据并进行预处理
+        with open(data_txt, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                if i >= num_inputs:
+                    break
+                # 使用BERT分词器处理文本
+                tokens = self.tokenizer.tokenize(line.strip())
+                # 确保序列长度不超过最大长度
+                if len(tokens) > max_seq_length - 2:
+                    tokens = tokens[:(max_seq_length - 2)]
+                
+                # 添加特殊标记
+                tokens = ["[CLS]"] + tokens + ["[SEP]"]
+                input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
+                
+                # 补齐或截断到最大序列长度
+                while len(input_ids) < max_seq_length:
+                    input_ids.append(0)
+                input_ids = input_ids[:max_seq_length]
+                
+                # 创建token_type_ids (0表示第一句话)
+                token_type_ids = [0] * max_seq_length
+                
+                # 创建position_ids
+                position_ids = list(range(max_seq_length))
+                
+                self.input_ids_list.append(input_ids)
+                self.token_type_ids_list.append(token_type_ids)
+                self.position_ids_list.append(position_ids)
 
         self.cache_file = cache_file
 
@@ -78,7 +107,26 @@ class BertCalibrator(trt.IInt8LegacyCalibrator):
         if current_batch % 10 == 0:
             print("Calibrating batch {:}, containing {:} sentences".format(current_batch, self.batch_size))
 
-        # TODO your code, copy input from cpu to gpu
+        # 将输入数据从CPU复制到GPU
+        batch_input_ids = []
+        batch_token_type_ids = []
+        batch_position_ids = []
+        
+        # 获取当前批次的数据
+        for i in range(self.batch_size):
+            idx = self.current_index + i
+            if idx < self.num_inputs:
+                batch_input_ids.extend(self.input_ids_list[idx])
+                batch_token_type_ids.extend(self.token_type_ids_list[idx])
+                batch_position_ids.extend(self.position_ids_list[idx])
+        
+        # 将数据复制到GPU设备内存
+        cuda.memcpy_htod(self.device_inputs[0], np.array(batch_input_ids, dtype=np.int32))
+        cuda.memcpy_htod(self.device_inputs[1], np.array(batch_token_type_ids, dtype=np.int32))
+        cuda.memcpy_htod(self.device_inputs[2], np.array(batch_position_ids, dtype=np.int32))
+        
+        # 更新索引
+        self.current_index += self.batch_size
 
         return self.device_inputs
 
