@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include <vector>
 #include <string>
 #include <NvInfer.h>
@@ -24,6 +24,8 @@
 #else
 #define WHERE_AM_I()
 #endif // DEBUG
+
+using namespace std;
 
 // +------- Plguin ---------------------------------------------------------------------------------
 namespace
@@ -38,7 +40,7 @@ namespace nvinfer1
 // +------- Plugin body ----------------------------------------------------------------------------
 class LayerNormPlugin: public IPluginV2DynamicExt
 {
-private:    
+private:
     std::string name_;
     std::string namespace_;
 
@@ -52,7 +54,7 @@ public:
     {
         WHERE_AM_I();
     }
-    
+
     LayerNormPlugin() = delete;
 
     ~LayerNormPlugin()
@@ -65,12 +67,12 @@ public:
         WHERE_AM_I();
         return 0;
     }
-    
+
     void serialize(void *buffer) const noexcept override
     {
         WHERE_AM_I();
     }
-  
+
     IPluginV2DynamicExt* clone() const noexcept override
     {
         WHERE_AM_I();
@@ -97,6 +99,7 @@ public:
             return false;
         }
 
+        cout << "inOut[pos].type " << (int)inOut[pos].type << endl;
         bool res = false;
         switch(pos)
         {
@@ -104,12 +107,16 @@ public:
             res = (inOut[pos].type == DataType::kFLOAT); break;
         case 1:
             res = inOut[pos].type == inOut[0].type; break;
+        case 2:
+            res = inOut[pos].type == inOut[0].type; break;
+        case 3:
+            res = inOut[pos].type == inOut[0].type; break;
         default:// should NOT be here
             res = false;
         }
         return res;
     }
-    
+
     DataType getOutputDataType(int outputIndex, const DataType* inputTypes, int nbInputs) const noexcept override
     {
         WHERE_AM_I();
@@ -162,7 +169,7 @@ public:
     {
         WHERE_AM_I();
     }
-    
+
     int32_t enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDesc, const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) noexcept override;
 }; // class LayerNormPlugin
 
